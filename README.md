@@ -5,6 +5,4 @@
 Integrating a pre-built GLB showroom model into an interactive web dashboard with real-time device state synchronization.
 
 ## Author
-Muhammad Fauzan Syarif
-Electrical Engineering
-Institut Teknologi Bandung
+Muhammad Fauzan Syarif | Electrical Engineering | Institut Teknologi Bandung
