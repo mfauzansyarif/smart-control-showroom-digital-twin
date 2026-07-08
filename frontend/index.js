@@ -1,53 +1,76 @@
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 
 const canvas = document.querySelector('.webgl')
 const scene = new THREE.Scene()
 
+const sizes = {
+    width: window.innerWidth,
+    height: window.innerHeight
+}
+
+const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 1000)
+// camera.position.set(2, 1, 2)
+scene.add(camera)
+
+const renderer = new THREE.WebGLRenderer({ canvas: canvas })
+renderer.setSize(sizes.width, sizes.height)
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+// renderer.gammaOutput = true
+// renderer.render(scene, camera)
+
+// Orbit Controls
+const controls = new OrbitControls(camera, renderer.domElement)
+// controls.panSpeed = 0.5
+// controls.rotateSpeed = 0.5
+controls.maxDistance = 100
+// controls.enablePan = false 
+controls.enableDamping = true
+
+// Lights
+const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 2)
+scene.add(hemiLight)
+const dirLight = new THREE.DirectionalLight(0xffffff, 1.5)
+dirLight.position.set(5, 10, 7.5)
+scene.add(dirLight)
+// const light = new THREE.AmbientLight(0xffffff, 1)
+// light.position.set(2, 2, 5)
+// scene.add(light)
+
 const loader = new GLTFLoader()
 loader.load('assets/hospital.glb', function(glb) {
-    console.log(glb)
     const root = glb.scene
-    root.scale.set(0.01, 0.01, 0.01)
     scene.add(root)
+
+    // Auto Fit Camera
+    const box = new THREE.Box3().setFromObject(root)
+    const size = box.getSize(new THREE.Vector3())
+    const center = box.getCenter(new THREE.Vector3())
+
+    console.log('Model size:', size)
+    console.log('Model center:', center)
+
+    // Camera Starting Position
+    const maxDim = Math.max(size.x, size.y, size.z)
+    camera.position.set(
+        center.x + maxDim,
+        center.y + maxDim * 0.5,
+        center.z + maxDim
+    )
+    camera.lookAt(center)
+    controls.target.copy(center)
+    controls.update()
+
 }, function(xhr) {
     console.log((xhr.loaded / xhr.total * 100) + '% loaded')
 }, function(error) {
     console.log('An error occured')
 })
 
-const light = new THREE.AmbientLight(0xffffff, 1)
-light.position.set(2, 2, 5)
-scene.add(light)
-
-// const geometry = new THREE.BoxGeometry(1, 1, 1)
-// const material = new THREE.MeshBasicMaterial({ 
-//     color: 0x00ff00 
-// })
-// const boxMesh = new THREE.Mesh(geometry, material)
-// scene.add(boxMesh)
-
-//Boiler Plate Code
-const sizes = {
-    width: window.innerWidth,
-    height: window.innerHeight
-}
-
-const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 100)
-camera.position.set(2, 1, 2)
-scene.add(camera)
-
-const renderer = new THREE.WebGLRenderer({
-    canvas: canvas
-})
-
-renderer.setSize(sizes.width, sizes.height)
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-renderer.gammaOutput = true
-renderer.render(scene, camera)
-
 function animate() {
     requestAnimationFrame(animate)
+    controls.update()
     renderer.render(scene, camera)
 }
 animate()
