@@ -38,6 +38,11 @@ scene.add(dirLight)
 // light.position.set(2, 2, 5)
 // scene.add(light)
 
+const deviceMeshes = {
+    lamp: null,
+    tv: null
+}
+
 const loader = new GLTFLoader()
 loader.load('assets/hospital.glb', function(glb) {
     const root = glb.scene
@@ -62,11 +67,53 @@ loader.load('assets/hospital.glb', function(glb) {
     controls.target.copy(center)
     controls.update()
 
+    root.traverse(function(child) {
+        if (child.isMesh) {
+            if (child.name === 'mesh_104') {
+                deviceMeshes.lamp = child
+                child.material = child.material.clone()
+            }
+            if (child.name === 'mesh_40') {
+                deviceMeshes.tv = child
+                child.material = child.material.clone()
+            }
+        }
+    })
+
+    console.log('Device meshes found:', deviceMeshes)
+
 }, function(xhr) {
     console.log((xhr.loaded / xhr.total * 100) + '% loaded')
 }, function(error) {
     console.log('An error occured')
 })
+
+function setLampState(isOn) {
+    if (!deviceMeshes.lamp) return
+    const mat = deviceMeshes.lamp.material
+    if (isOn) {
+        mat.emissive = new THREE.Color(0xffdd88)
+        mat.emissiveIntensity = 1.5
+    } else {
+        mat.emissive = new THREE.Color(0x000000)
+        mat.emissiveIntensity = 0
+    }
+}
+
+function setTvState(isOn) {
+    if (!deviceMeshes.tv) return
+    const mat = deviceMeshes.tv.material
+    if (isOn) {
+        mat.emissive = new THREE.Color(0x3399ff)
+        mat.emissiveIntensity = 1.0
+    } else {
+        mat.emissive = new THREE.Color(0x000000)
+        mat.emissiveIntensity = 0
+    }
+}
+
+window.setLampState = setLampState
+window.setTvState = setTvState
 
 function animate() {
     requestAnimationFrame(animate)
