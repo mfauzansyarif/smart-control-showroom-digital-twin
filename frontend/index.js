@@ -121,3 +121,26 @@ function animate() {
     renderer.render(scene, camera)
 }
 animate()
+
+// Koneksi ke WebSocket backend
+const socket = new WebSocket('ws://localhost:8000/ws')
+
+socket.onopen = function() {
+    console.log('WebSocket connected')
+}
+
+socket.onmessage = function(event) {
+    const data = JSON.parse(event.data)
+    console.log('State update received:', data)
+
+    setLampState(data.lamp.on)
+    setTvState(data.tv.on)
+}
+
+socket.onclose = function() {
+    console.log('WebSocket disconnected')
+}
+
+socket.onerror = function(error) {
+    console.error('WebSocket error:', error)
+}
