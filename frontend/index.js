@@ -122,7 +122,7 @@ function animate() {
 }
 animate()
 
-// Koneksi ke WebSocket backend
+// Koneksi WebSocket
 const socket = new WebSocket('ws://localhost:8000/ws')
 
 socket.onopen = function() {
@@ -144,3 +144,14 @@ socket.onclose = function() {
 socket.onerror = function(error) {
     console.error('WebSocket error:', error)
 }
+
+async function toggleLamp() {
+    await fetch('http://localhost:8000/lamp/toggle', { method: 'POST' })
+}
+
+async function toggleTv() {
+    await fetch('http://localhost:8000/tv/toggle', { method: 'POST' })
+}
+
+document.getElementById('btn-lamp').addEventListener('click', toggleLamp)
+document.getElementById('btn-tv').addEventListener('click', toggleTv)
