@@ -10,22 +10,17 @@ const sizes = {
     height: window.innerHeight
 }
 
+// Camera
 const camera = new THREE.PerspectiveCamera(75, sizes.width / sizes.height, 0.1, 1000)
-// camera.position.set(2, 1, 2)
 scene.add(camera)
 
 const renderer = new THREE.WebGLRenderer({ canvas: canvas })
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-// renderer.gammaOutput = true
-// renderer.render(scene, camera)
 
 // Orbit Controls
 const controls = new OrbitControls(camera, renderer.domElement)
-// controls.panSpeed = 0.5
-// controls.rotateSpeed = 0.5
 controls.maxDistance = 100
-// controls.enablePan = false 
 controls.enableDamping = true
 
 // Lights
@@ -34,10 +29,8 @@ scene.add(hemiLight)
 const dirLight = new THREE.DirectionalLight(0xffffff, 1.5)
 dirLight.position.set(5, 10, 7.5)
 scene.add(dirLight)
-// const light = new THREE.AmbientLight(0xffffff, 1)
-// light.position.set(2, 2, 5)
-// scene.add(light)
 
+// Mesh References
 const deviceMeshes = {
     lamp: null,
     tv: null
@@ -67,6 +60,7 @@ loader.load('assets/hospital.glb', function(glb) {
     controls.target.copy(center)
     controls.update()
 
+    // Find device meshes by name
     root.traverse(function(child) {
         if (child.isMesh) {
             if (child.name === 'mesh_104') {
@@ -88,6 +82,7 @@ loader.load('assets/hospital.glb', function(glb) {
     console.log('An error occured')
 })
 
+// Lamp Visual State Update Functions
 function setLampState(isOn) {
     if (!deviceMeshes.lamp) return
     const mat = deviceMeshes.lamp.material
@@ -100,6 +95,7 @@ function setLampState(isOn) {
     }
 }
 
+// TV Visual State Update Functions
 function setTvState(isOn) {
     if (!deviceMeshes.tv) return
     const mat = deviceMeshes.tv.material
@@ -112,9 +108,7 @@ function setTvState(isOn) {
     }
 }
 
-window.setLampState = setLampState
-window.setTvState = setTvState
-
+// Animation Loop
 function animate() {
     requestAnimationFrame(animate)
     controls.update()
@@ -122,19 +116,28 @@ function animate() {
 }
 animate()
 
-// Koneksi WebSocket
+// WebSocket Connection to Backend
 const socket = new WebSocket('ws://localhost:8000/ws')
+
+const switchLamp = document.getElementById('switch-lamp')
+const switchTv = document.getElementById('switch-tv')
 
 socket.onopen = function() {
     console.log('WebSocket connected')
 }
 
 socket.onmessage = function(event) {
+    // Expecting JSON data with the structure: { lamp: { on: boolean }, tv: { on: boolean } }
     const data = JSON.parse(event.data)
     console.log('State update received:', data)
 
+    // Update the visual state of devices based on the received data
     setLampState(data.lamp.on)
     setTvState(data.tv.on)
+
+    // Update the checkbox states to reflect the current device states
+    switchLamp.checked = data.lamp.on
+    switchTv.checked = data.tv.on
 }
 
 socket.onclose = function() {
@@ -145,13 +148,13 @@ socket.onerror = function(error) {
     console.error('WebSocket error:', error)
 }
 
-async function toggleLamp() {
-    await fetch('http://localhost:8000/lamp/toggle', { method: 'POST' })
-}
+// Event Listeners for Switches
+switchLamp.addEventListener('click', function(event) {
+    event.preventDefault()
+    fetch('http://localhost:8000/lamp/toggle', { method: 'POST' })
+})
 
-async function toggleTv() {
-    await fetch('http://localhost:8000/tv/toggle', { method: 'POST' })
-}
-
-document.getElementById('btn-lamp').addEventListener('click', toggleLamp)
-document.getElementById('btn-tv').addEventListener('click', toggleTv)
+switchTv.addEventListener('click', function(event) {
+    event.preventDefault()
+    fetch('http://localhost:8000/tv/toggle', { method: 'POST' })
+})
