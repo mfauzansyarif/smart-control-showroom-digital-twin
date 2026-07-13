@@ -1,6 +1,7 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 import sqlite3
+import httpx
 
 app = FastAPI()
 
@@ -30,12 +31,20 @@ def init_db():
 
 init_db()
 
+# State for temperature
+temp_state = {"value": None}
+
+BANDUNG_LAT = -6.9147
+BANDUNG_LON = 107.6098
+
 # Database interaction functions
 def get_all_devices():
     conn = sqlite3.connect(DB_PATH)
     rows = conn.execute("SELECT name, is_on FROM devices").fetchall()
     conn.close()
-    return {name: {"on": bool(is_on)} for name, is_on in rows}
+    state = {name: {"on": bool(is_on)} for name, is_on in rows}
+    state["temp"] = temp_state
+    return state
 
 def toggle_device(name):
     conn = sqlite3.connect(DB_PATH)
@@ -72,6 +81,24 @@ async def toggle_tv():
     new_state = toggle_device("tv")
     await broadcast_state()
     return {"on": new_state}
+
+# Refresh the temperature from the Open-Meteo API and broadcast
+@app.post("/temp/refresh")
+async def refresh_temp():
+    async with httpx.AsyncClient() as client:
+        response = await client.get(
+            "https://api.open-meteo.com/v1/forecast",
+            params={
+                "latitude": BANDUNG_LAT,
+                "longitude": BANDUNG_LON,
+                "current": "temperature_2m",
+            },
+        )
+        data = response.json()
+        temp_state["value"] = data["current"]["temperature_2m"]
+
+    await broadcast_state()
+    return temp_state
 
 # Broadcast the current state of all devices to all connected WebSocket clients
 async def broadcast_state():

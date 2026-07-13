@@ -114,6 +114,12 @@ function setTvState(isOn) {
     }
 }
 
+// Temperature Display Update Function
+function setTemp(value) {
+    const el = document.getElementById('temp-value')
+    el.textContent = value !== null ? value : '--'
+}
+
 // Animation Loop
 function animate() {
     requestAnimationFrame(animate)
@@ -139,6 +145,7 @@ fetch('http://localhost:8000/devices')
         switchTv.checked = data.tv.on
         setLampState(data.lamp.on)
         setTvState(data.tv.on)
+        setTemp(data.temp.value)
     })
 
 socket.onopen = function() {
@@ -157,6 +164,9 @@ socket.onmessage = function(event) {
     // Update the checkbox states to reflect the current device states
     switchLamp.checked = data.lamp.on
     switchTv.checked = data.tv.on
+    
+    // Update the  temperature display
+    setTemp(data.temp.value)
 }
 
 socket.onclose = function() {
@@ -167,7 +177,7 @@ socket.onerror = function(error) {
     console.error('WebSocket error:', error)
 }
 
-// Event Listeners for Switches
+// Event Listeners for Switches and Refresh Button
 switchLamp.addEventListener('click', function(event) {
     event.preventDefault()
     fetch('http://localhost:8000/lamp/toggle', { method: 'POST' })
@@ -176,4 +186,8 @@ switchLamp.addEventListener('click', function(event) {
 switchTv.addEventListener('click', function(event) {
     event.preventDefault()
     fetch('http://localhost:8000/tv/toggle', { method: 'POST' })
+})
+
+document.getElementById('btn-refresh-temp').addEventListener('click', function() {
+    fetch('http://localhost:8000/temp/refresh', { method: 'POST' })
 })
