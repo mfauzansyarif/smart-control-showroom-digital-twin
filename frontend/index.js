@@ -76,6 +76,12 @@ loader.load('assets/hospital.glb', function(glb) {
 
     console.log('Device meshes found:', deviceMeshes)
 
+    // Set initial visual state based on fetched data
+    if (initialState) {
+        setLampState(initialState.lamp.on)
+        setTvState(initialState.tv.on)
+    }
+
 }, function(xhr) {
     console.log((xhr.loaded / xhr.total * 100) + '% loaded')
 }, function(error) {
@@ -121,6 +127,19 @@ const socket = new WebSocket('ws://localhost:8000/ws')
 
 const switchLamp = document.getElementById('switch-lamp')
 const switchTv = document.getElementById('switch-tv')
+
+// Initial Fetch to Get Current Device States
+let initialState = null
+
+fetch('http://localhost:8000/devices')
+    .then(response => response.json())
+    .then(data => {
+        initialState = data
+        switchLamp.checked = data.lamp.on
+        switchTv.checked = data.tv.on
+        setLampState(data.lamp.on)
+        setTvState(data.tv.on)
+    })
 
 socket.onopen = function() {
     console.log('WebSocket connected')

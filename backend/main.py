@@ -1,5 +1,6 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+import sqlite3
 
 app = FastAPI()
 
@@ -11,11 +12,39 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# In-memory state of devices (Single source of truth)
-devices = {
-    "lamp": {"on": False},
-    "tv": {"on": False}
-}
+# Database setup
+DB_PATH = "devices.db"
+
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS devices (
+            name TEXT PRIMARY KEY,
+            is_on INTEGER
+        )
+    """)
+    conn.execute("INSERT OR IGNORE INTO devices VALUES ('lamp', 0)")
+    conn.execute("INSERT OR IGNORE INTO devices VALUES ('tv', 0)")
+    conn.commit()
+    conn.close()
+
+init_db()
+
+# Database interaction functions
+def get_all_devices():
+    conn = sqlite3.connect(DB_PATH)
+    rows = conn.execute("SELECT name, is_on FROM devices").fetchall()
+    conn.close()
+    return {name: {"on": bool(is_on)} for name, is_on in rows}
+
+def toggle_device(name):
+    conn = sqlite3.connect(DB_PATH)
+    current = conn.execute("SELECT is_on FROM devices WHERE name = ?", (name,)).fetchone()[0]
+    new_state = 0 if current else 1
+    conn.execute("UPDATE devices SET is_on = ? WHERE name = ?", (new_state, name))
+    conn.commit()
+    conn.close()
+    return bool(new_state)
 
 # All connected WebSocket clients
 active_connections: list[WebSocket] = []
@@ -28,26 +57,27 @@ def read_root():
 # Retrieve the current state of all devices
 @app.get("/devices")
 def get_devices():
-    return devices
+    return get_all_devices()
 
 # Toggle the state of the lamp and broadcast the new state to all connected clients
 @app.post("/lamp/toggle")
 async def toggle_lamp():
-    devices["lamp"]["on"] = not devices["lamp"]["on"]
+    new_state = toggle_device("lamp")
     await broadcast_state()
-    return devices["lamp"]
+    return {"on": new_state}
 
 # Toggle the state of the TV and broadcast the new state to all connected clients
 @app.post("/tv/toggle")
 async def toggle_tv():
-    devices["tv"]["on"] = not devices["tv"]["on"]
+    new_state = toggle_device("tv")
     await broadcast_state()
-    return devices["tv"]
+    return {"on": new_state}
 
 # Broadcast the current state of all devices to all connected WebSocket clients
 async def broadcast_state():
+    state = get_all_devices()
     for connection in active_connections:
-        await connection.send_json(devices)
+        await connection.send_json(state)
 
 # WebSocket endpoint for real-time communication with clients
 @app.websocket("/ws")
